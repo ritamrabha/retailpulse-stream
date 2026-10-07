@@ -1,0 +1,7 @@
+# Python 3.11 or newer
+pandas>=2.0
+sqlalchemy>=2.0
+pymysql>=1.1
+cryptography>=42
+neo4j>=5.0
+jupyterlab>=4.0

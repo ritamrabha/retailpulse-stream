@@ -1,0 +1,46 @@
+# ======================= DATA: never commit =======================
+# The Retailrocket dataset is large (about 1 GB) and has its own licence (CC BY-NC-SA 4.0).
+# Everything derived from it (prepared files, samples, graph exports) stays on your own PC too.
+*.csv
+*.tsv
+*.parquet
+*.zip
+
+# Our own small result logs (timings and validation results) are fine to share.
+# Delete the next line if you do not want any CSV in the repository.
+!metrics/*.csv
+
+# ======================= BACKUPS AND DUMPS =======================
+backups/
+*.dump
+*.bak
+*.sql.gz
+
+# ======================= SECRETS =======================
+.env
+.env.*
+!.env.example
+*.local.sql
+*.local.yml
+docker-compose-bdv.yml
+docker-compose.override.yml
+*.pem
+*.key
+
+# ======================= TABLEAU =======================
+# Packaged workbooks can embed data and connection details.
+# Add one on purpose only after checking its size and contents.
+*.twbx
+*.hyper
+*.tdsx
+
+# ======================= PYTHON / JUPYTER =======================
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# ======================= OPERATING SYSTEM =======================
+.DS_Store
+Thumbs.db

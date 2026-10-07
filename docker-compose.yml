@@ -1,0 +1,26 @@
+# Neo4j for this project - for people who clone the repository.
+# If you already have a Neo4j running, you do not need this file.
+#
+#   1. copy .env.example to .env and set NEO4J_PASSWORD
+#   2. docker compose up -d
+#   Browser: http://localhost:7475      Python connection: bolt://localhost:7688
+services:
+  neo4j:
+    image: neo4j:latest
+    container_name: neo4j-bdv
+    ports:
+      - "7475:7474"
+      - "7688:7687"
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
+      NEO4J_server_memory_heap_initial__size: "2G"
+      NEO4J_server_memory_heap_max__size: "2G"
+      NEO4J_server_memory_pagecache_size: "2G"
+    volumes:
+      - neo4j-bdv-data:/data
+      - neo4j-bdv-logs:/logs
+    restart: unless-stopped
+
+volumes:
+  neo4j-bdv-data:
+  neo4j-bdv-logs:
