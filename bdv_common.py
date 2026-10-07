@@ -5,6 +5,7 @@ Every notebook can use these with:
     import bdv_common as bdv
     engine = bdv.connect_mysql()
 """
+import os
 import time
 import pandas as pd
 from getpass import getpass
@@ -19,8 +20,16 @@ BASELINE = {"events": 1653660, "views": 1599672, "carts": 40649,
 
 
 # ---------------------------------------------------------------- connection
-def connect_mysql(user="root", host="localhost", port=3306, database="ecommerce_bdv", password=None):
-    """Asks for the MySQL password in a hidden box and returns an engine."""
+def connect_mysql(user=None, host=None, port=None, database="ecommerce_bdv", password=None):
+    """Returns a MySQL engine.
+    Settings come from the arguments, else from the environment (used inside Docker:
+    BDV_MYSQL_HOST, BDV_MYSQL_PORT, BDV_MYSQL_USER, BDV_MYSQL_PASSWORD), else the local
+    defaults (localhost:3306, root). Only if no password is known, a hidden box asks for it."""
+    user = user or os.environ.get("BDV_MYSQL_USER", "root")
+    host = host or os.environ.get("BDV_MYSQL_HOST", "localhost")
+    port = int(port or os.environ.get("BDV_MYSQL_PORT", 3306))
+    if password is None:
+        password = os.environ.get("BDV_MYSQL_PASSWORD")
     if password is None:
         password = getpass("MySQL password: ")
     engine = create_engine(

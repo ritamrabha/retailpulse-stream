@@ -8,7 +8,7 @@ MySQL, a Neo4j graph and the Tableau dashboards change, so you can watch the ana
 > streaming platform, and it contains no machine-learning model. Every number comes from counting
 > the real events in the dataset.
 
-Author: `Ritam Rabha` 
+Author: `<your name>`  |  Licence of the code: `<choose one, see "Licence" below>`
 
 ---
 
@@ -96,7 +96,9 @@ them. The only CSVs that may be committed are the small result logs in `metrics/
 README.md
 requirements.txt             Python packages
 .env.example                 template for the Neo4j password (copy to .env, never commit .env)
-docker-compose.yml           optional: starts Neo4j in Docker, password taken from .env
+docker-compose.yml           starts MySQL + Neo4j + JupyterLab (see "Run it with Docker")
+Dockerfile                   the JupyterLab image
+docker/03_tableau_user.sh    creates the read-only Tableau user on the first MySQL start
 bdv_common.py                shared helpers + the MySQL half of the replay engine
 bdv_graph.py                 the Neo4j half of the replay engine, checks, metrics, reset
 01_data_preparation.ipynb    clean data, split 60/40, number the weekly batches
@@ -114,16 +116,55 @@ metrics/                     replay_metrics.csv and validation_results.csv (writ
 
 - Python 3.11 or newer, and `pip install -r requirements.txt`
 - MySQL 8.0
-- Neo4j (Docker image `neo4j:latest`, or Neo4j Desktop), reachable at `bolt://localhost:7688`
+- Neo4j 2026.06 Community (Docker image `neo4j:2026.06.0-community`, or Neo4j Desktop), reachable at `bolt://localhost:7688`
   (change the address in `connect_neo4j()` if yours differs)
 - Tableau Desktop for the dashboards (proprietary; screenshots are provided)
 - About 16 GB of RAM was used for development (Docker limited to 7.5 GB, Neo4j heap and page cache
   of 2 GB each)
 
-Passwords are **never** stored in the code or the notebooks. Both engines ask for them in a hidden
-prompt (`getpass`).
+Passwords are **never** stored in the code or the notebooks. Outside Docker both engines ask for
+them in a hidden prompt (`getpass`); inside Docker they come from `.env`.
 
-## How to run it (manual order)
+## Run it with Docker (recommended)
+
+Docker starts MySQL, Neo4j and JupyterLab together. Nothing else needs to be installed except
+Docker Desktop (Windows, Mac) or Docker Engine (Linux).
+
+**Needs:** Docker Desktop with at least **7 GB RAM** given to Docker (Settings, Resources), about
+**15 GB free disk** (the data files, both databases and the prepared files), and the four dataset
+CSV files (see Data).
+
+1. Put the four dataset files in this folder, next to `docker-compose.yml`.
+2. Copy `.env.example` to `.env` and set the four passwords or token inside it.
+3. Open a terminal in this folder and run:
+   ```
+   docker compose up -d --build
+   ```
+   The first start downloads the images and builds the lab image (a few minutes). MySQL creates
+   the database, all tables, the `dash_*` views and the read-only `tableau_ro` user by itself.
+4. Wait until `docker compose ps` shows `mysql` and `neo4j` as **healthy**, then open
+   <http://localhost:8888> and enter the `JUPYTER_TOKEN` from `.env`.
+5. Run the notebooks in order: `01_data_preparation`, `02_mysql`, `03_neo4j`, `04_replay_engine`.
+   Inside the lab the databases are found by name, so `bdv.connect_mysql()` and
+   `bg.connect_neo4j()` need **no password prompt and no address** (they read them from the
+   environment). If a notebook has its own connection cell with `localhost`, replace it with
+   those two calls.
+
+| What | Address from the host PC |
+|---|---|
+| JupyterLab | <http://localhost:8888> |
+| Neo4j Browser | <http://localhost:7475> (user `neo4j`) |
+| MySQL (for Tableau) | `localhost`, port **3307**, user `tableau_ro` (only the `dash_*` views) |
+
+Stop everything with `docker compose down` (data is kept). Delete all data and start from zero with
+`docker compose down -v`. If the schema files in `sql/` change, run `down -v` once, because MySQL
+runs them only on the very first start.
+
+Troubleshooting: *Neo4j restarts or the lab is killed* means Docker has too little memory; give it
+more, or set `NEO4J_HEAP=1G`, `NEO4J_PAGECACHE=1G`, `MYSQL_BUFFER_POOL=512M` in `.env`. *Port already
+in use* means change the port in `.env`.
+
+## How to run it without Docker (manual order)
 
 Run everything from the project folder. The notebooks are written to be run top to bottom.
 

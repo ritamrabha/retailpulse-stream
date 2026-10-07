@@ -4,7 +4,6 @@
 *.csv
 *.tsv
 *.parquet
-*.zip
 
 # Our own small result logs (timings and validation results) are fine to share.
 # Delete the next line if you do not want any CSV in the repository.
@@ -22,7 +21,6 @@ backups/
 !.env.example
 *.local.sql
 *.local.yml
-docker-compose-bdv.yml
 docker-compose.override.yml
 *.pem
 *.key

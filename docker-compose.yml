@@ -1,26 +1,84 @@
-# Neo4j for this project - for people who clone the repository.
-# If you already have a Neo4j running, you do not need this file.
+# The whole project in three containers:
+#   mysql  - MySQL 8.0.46, schema + views created automatically on the first start
+#   neo4j  - Neo4j 2026.06.0 Community
+#   lab    - JupyterLab with Python; the notebooks run here and reach both databases by name
 #
-#   1. copy .env.example to .env and set NEO4J_PASSWORD
-#   2. docker compose up -d
-#   Browser: http://localhost:7475      Python connection: bolt://localhost:7688
+#   1. copy .env.example to .env and set the passwords
+#   2. put the four dataset CSV files in this folder (see README)
+#   3. docker compose up -d --build
+#   4. open http://localhost:8888  (token = JUPYTER_TOKEN from .env)
+name: bdv
+
 services:
-  neo4j:
-    image: neo4j:latest
-    container_name: neo4j-bdv
-    ports:
-      - "7475:7474"
-      - "7688:7687"
+  mysql:
+    image: mysql:8.0.46
+    container_name: bdv-mysql
+    command: ["--local-infile=1", "--max_allowed_packet=256M", "--innodb_buffer_pool_size=${MYSQL_BUFFER_POOL:-1G}"]
     environment:
-      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD}"
-      NEO4J_server_memory_heap_initial__size: "2G"
-      NEO4J_server_memory_heap_max__size: "2G"
-      NEO4J_server_memory_pagecache_size: "2G"
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+      TABLEAU_RO_PASSWORD: ${TABLEAU_RO_PASSWORD:?set TABLEAU_RO_PASSWORD in .env}
+    ports:
+      - "${MYSQL_HOST_PORT:-3307}:3306"          # for Tableau / MySQL Workbench on the host PC
     volumes:
-      - neo4j-bdv-data:/data
-      - neo4j-bdv-logs:/logs
+      - bdv-mysql-data:/var/lib/mysql
+      - ./sql/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./sql/02_views.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
+      - ./docker/03_tableau_user.sh:/docker-entrypoint-initdb.d/03_tableau_user.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:2026.06.0-community
+    container_name: bdv-neo4j
+    environment:
+      NEO4J_AUTH: "neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}"
+      NEO4J_server_memory_heap_initial__size: ${NEO4J_HEAP:-2G}
+      NEO4J_server_memory_heap_max__size: ${NEO4J_HEAP:-2G}
+      NEO4J_server_memory_pagecache_size: ${NEO4J_PAGECACHE:-2G}
+    ports:
+      - "${NEO4J_BROWSER_PORT:-7475}:7474"
+      - "${NEO4J_BOLT_PORT:-7688}:7687"
+    volumes:
+      - bdv-neo4j-data:/data
+      - bdv-neo4j-logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'cat < /dev/null > /dev/tcp/127.0.0.1/7687'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+  lab:
+    build: .
+    image: bdv-lab:1.0
+    container_name: bdv-lab
+    depends_on:
+      mysql:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+    environment:
+      BDV_MYSQL_HOST: mysql
+      BDV_MYSQL_PORT: "3306"
+      BDV_MYSQL_USER: root
+      BDV_MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      BDV_NEO4J_URI: bolt://neo4j:7687
+      BDV_NEO4J_USER: neo4j
+      BDV_NEO4J_PASSWORD: ${NEO4J_PASSWORD}
+      JUPYTER_TOKEN: ${JUPYTER_TOKEN:?set JUPYTER_TOKEN in .env}
+    ports:
+      - "${LAB_PORT:-8888}:8888"
+    volumes:
+      - .:/work
     restart: unless-stopped
 
 volumes:
-  neo4j-bdv-data:
-  neo4j-bdv-logs:
+  bdv-mysql-data:
+  bdv-neo4j-data:
+  bdv-neo4j-logs:
