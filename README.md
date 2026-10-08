@@ -8,7 +8,7 @@ MySQL, a Neo4j graph and the Tableau dashboards change, so you can watch the ana
 > streaming platform, and it contains no machine-learning model. Every number comes from counting
 > the real events in the dataset.
 
-Author: `<your name>`  |  Licence of the code: `<choose one, see "Licence" below>`
+Author: Ritam Rabha  
 
 ---
 
